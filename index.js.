@@ -1,0 +1,206 @@
+const {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  EmbedBuilder
+} = require("discord.js");
+
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
+
+if (!TOKEN || !CLIENT_ID) {
+  throw new Error(
+    "Configure DISCORD_TOKEN e CLIENT_ID nas variáveis de ambiente."
+  );
+}
+
+const bot = new Client({
+  intents: [GatewayIntentBits.Guilds]
+});
+
+const comandos = [
+  new SlashCommandBuilder()
+    .setName("ola")
+    .setDescription("Converse com a Tsunade"),
+
+  new SlashCommandBuilder()
+    .setName("ping")
+    .setDescription("Verifique a conexão do bot"),
+
+  new SlashCommandBuilder()
+    .setName("ajuda")
+    .setDescription("Veja os comandos disponíveis"),
+
+  new SlashCommandBuilder()
+    .setName("dado")
+    .setDescription("Jogue um dado"),
+
+  new SlashCommandBuilder()
+    .setName("bola8")
+    .setDescription("Pergunte algo à bola mágica"),
+
+  new SlashCommandBuilder()
+    .setName("abracar")
+    .setDescription("Envie um abraço a alguém")
+    .addUserOption(option =>
+      option.setName("usuario")
+        .setDescription("Quem receberá o abraço")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("cafune")
+    .setDescription("Faça carinho em alguém")
+    .addUserOption(option =>
+      option.setName("usuario")
+        .setDescription("Quem receberá o carinho")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("avatar")
+    .setDescription("Veja o avatar de alguém")
+    .addUserOption(option =>
+      option.setName("usuario")
+        .setDescription("Pessoa desejada")
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("servidor")
+    .setDescription("Veja informações do servidor")
+];
+
+bot.once("ready", async () => {
+  console.log(`Tsunade conectada como ${bot.user.tag}`);
+
+  try {
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+    const rota = GUILD_ID
+      ? Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID)
+      : Routes.applicationCommands(CLIENT_ID);
+
+    await rest.put(rota, {
+      body: comandos.map(comando => comando.toJSON())
+    });
+
+    console.log("Comandos registrados com sucesso!");
+  } catch (erro) {
+    console.error("Erro ao registrar comandos:", erro);
+  }
+});
+
+bot.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  try {
+    const { commandName } = interaction;
+
+    if (commandName === "ola") {
+      return interaction.reply(
+        "Olá! Sou a Tsunade Senju. Pode conversar comigo; vou te responder com respeito e gentileza."
+      );
+    }
+
+    if (commandName === "ping") {
+      return interaction.reply(
+        `Pong! Latência: ${bot.ws.ping} ms.`
+      );
+    }
+
+    if (commandName === "ajuda") {
+      const embed = new EmbedBuilder()
+        .setColor(0xE6B85C)
+        .setTitle("Comandos da Tsunade Senju")
+        .setDescription([
+          "`/ola` — Converse comigo",
+          "`/ping` — Verifique a conexão",
+          "`/dado` — Jogue um dado",
+          "`/bola8` — Faça uma pergunta",
+          "`/abracar` — Envie um abraço",
+          "`/cafune` — Faça carinho",
+          "`/avatar` — Veja um avatar",
+          "`/servidor` — Informações do servidor"
+        ].join("\n"));
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    if (commandName === "dado") {
+      const numero = Math.floor(Math.random() * 6) + 1;
+      return interaction.reply(`Você tirou ${numero} no dado!`);
+    }
+
+    if (commandName === "bola8") {
+      const respostas = [
+        "Sim, com certeza!",
+        "As chances são boas.",
+        "Talvez. Vamos aguardar.",
+        "Não é possível prever.",
+        "Melhor perguntar novamente depois."
+      ];
+
+      return interaction.reply(
+        respostas[Math.floor(Math.random() * respostas.length)]
+      );
+    }
+
+    if (commandName === "abracar" || commandName === "cafune") {
+      const usuario = interaction.options.getUser("usuario");
+
+      const mensagem = commandName === "abracar"
+        ? ` enviou um abraço para ${usuario}.`
+        : ` fez carinho em ${usuario}.`;
+
+      return interaction.reply(
+        `${interaction.user}${mensagem}`
+      );
+    }
+
+    if (commandName === "avatar") {
+      const usuario =
+        interaction.options.getUser("usuario") || interaction.user;
+
+      return interaction.reply({
+        content: usuario.displayAvatarURL({
+          size: 1024,
+          extension: "png"
+        })
+      });
+    }
+
+    if (commandName === "servidor") {
+      const servidor = interaction.guild;
+
+      if (!servidor) {
+        return interaction.reply({
+          content: "Este comando só funciona dentro de um servidor.",
+          ephemeral: true
+        });
+      }
+
+      return interaction.reply(
+        `Servidor: **${servidor.name}**\nID: \`${servidor.id}\`\nMembros: **${servidor.memberCount}**`
+      );
+    }
+  } catch (erro) {
+    console.error("Erro no comando:", erro);
+
+    const resposta = {
+      content: "Ocorreu um erro ao executar esse comando.",
+      ephemeral: true
+    };
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(resposta).catch(() => {});
+    } else {
+      await interaction.reply(resposta).catch(() => {});
+    }
+  }
+});
+
+bot.login(TOKEN);
