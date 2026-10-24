@@ -1,0 +1,13 @@
+
+{
+  "name": "tsunade-senju-bot",
+  "version": "1.0.0",
+  "description": "Bot Tsunade Senju para Discord em português",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.21.0"
+  }
+}
